@@ -12,7 +12,7 @@ Installation
 
 Usage
 -----
-When yourls-cas-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made.
+When yourls-cas-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made. If LDAP authentication is successful, then you will immediately go to the admin interface.
 
 Configuration
 -------------
