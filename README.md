@@ -7,7 +7,7 @@ Installation
 ------------
 1. Download the latest yourls-ldap-plugin.
 1. Copy the plugin folder into your user/plugins folder for YOURLS.
-1. Set up the parameters for yourls-ldap-plugin in YOURLS configuration (see below).
+1. Set up the parameters for yourls-ldap-plugin in YOURLS configuration user/config.php (see below).
 1. Activate the plugin with the plugin manager in the admin interface.
 
 Usage
@@ -16,10 +16,11 @@ When yourls-cas-plugin is enabled and user was not successfuly authenticated usi
 
 Configuration
 -------------
-  * `LDAP_HOST` LDAP host name, IP or URL. You can use ldaps://host for LDAP with TLS
-  * `LDAP_PORT` LDAP server port - often 389 or 636 for TLS (LDAPS)
-  * `LDAP_BASE` Base DN (location of users)
-  * `LDAP_USERNAME_FIELD` (optional) LDAP field name in which username is store
+
+  * define( 'LDAPAUTH_HOST', 'ldaps://ldap.domain.com' ) LDAP host name, IP or URL. You can use ldaps://host for LDAP with TLS
+  * define( 'LDAPAUTH_PORT', '636' ) LDAP server port - often 389 or 636 for TLS (LDAPS)
+  * define( 'LDAPAUTH_BASE', 'dc=domain,dc=com' ) Base DN (location of users)
+  * define( 'LDAPAUTH_USERNAME_FIELD', 'uid') (optional) LDAP field name in which username is store
 
 Troubleshooting
 ---------------
