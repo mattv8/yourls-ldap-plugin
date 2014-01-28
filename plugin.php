@@ -79,6 +79,7 @@ function ldapauth_is_valid_user( $value ) {
 		// try to authenticate
 		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
 		if (!$ldapConnection) Die("Cannot connect to LDAP " . LDAPAUTH_HOST);
+		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
 		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'] );
 		if (!$searchDn) return $value;
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
@@ -93,6 +94,8 @@ function ldapauth_is_valid_user( $value ) {
 		{
 			$username = $searchResult[0][LDAPAUTH_USERNAME_FIELD][0];
 			yourls_set_user($username);
+			global $yourls_user_passwords;
+			$yourls_user_passwords[$username] = uniqid("",true);
 			$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
 			return true;
 		}
