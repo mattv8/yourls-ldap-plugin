@@ -80,7 +80,20 @@ function ldapauth_is_valid_user( $value ) {
 		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
 		if (!$ldapConnection) Die("Cannot connect to LDAP " . LDAPAUTH_HOST);
 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
-		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'] );
+		
+		// Check if using a privileged user account to search
+		if (defined('LDAPAUTH_SEARCH_USER') && defined('LDAPAUTH_SEARCH_PASS')) {
+			if (!@ldap_bind($ldapConnection, LDAPAUTH_SEARCH_USER, LDAPAUTH_SEARCH_PASS)) {
+				die('Couldn\'t bind search user ' . LDAPAUTH_SEARCH_USER);
+			}
+		}
+		
+		// Limit the attrs to the ones we need
+		$attrs = array('dn', LDAPAUTH_USERNAME_FIELD);
+		if (defined('LDAPAUTH_GROUP_ATTR'))
+			array_push($attrs, LDAPAUTH_GROUP_ATTR);
+			
+		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'], $attrs );
 		if (!$searchDn) return $value;
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
 		if (!$searchResult) return $value;
@@ -92,6 +105,18 @@ function ldapauth_is_valid_user( $value ) {
 		// success?
 		if ($ldapSuccess)
 		{
+			// are we checking group auth?
+			if (defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')) {
+				if (!array_key_exists(LDAPAUTH_GROUP_ATTR, $searchResult[0])) die('Not in any LDAP groups');
+				
+				$in_group = false;
+				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
+					if (strtolower($grps) == strtolower(LDAPAUTH_GROUP_REQ)) { $in_group = true; error_log("YESSS"); break;  }
+				}
+				
+				if (!$in_group) die('Not in admin group');
+			}
+			
 			$username = $searchResult[0][LDAPAUTH_USERNAME_FIELD][0];
 			yourls_set_user($username);
 			global $yourls_user_passwords;
