@@ -14,6 +14,10 @@ Usage
 -----
 When yourls-cas-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made. If LDAP authentication is successful, then you will immediately go to the admin interface.
 
+You can also set a privileged account to search the LDAP directory with. This is useful for directories that don't allow anonymous binding.
+
+Setting the groups settings will check the user is a member of that group before logging them in and storing their credentials. This check is only performed the first time they auth or when their password changes.
+
 Configuration
 -------------
 
@@ -22,6 +26,14 @@ Configuration
   * define( 'LDAPAUTH_BASE', 'dc=domain,dc=com' ) Base DN (location of users)
   * define( 'LDAPAUTH_USERNAME_FIELD', 'uid') (optional) LDAP field name in which username is store
 
+To use a privileged account for the user search:
+  * define( 'LDAPAUTH_SEARCH_USER', 'cn=your-user,dc=domain,dc=com' ) // (optional) Privileged user to search with
+  * define( 'LDAPAUTH_SEARCH_PASS', 'the-pass') // (optional) (only if LDAPAUTH_SEARCH_USER set) Privileged user pass
+
+To check group membership before authenticating:
+  * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ) // (optional) LDAP groups attr
+  * define( 'LDAPAUTH_GROUP_REQ', 'the-group') // (only if LDAPAUTH_GROUP_REQ set) Group user must be in
+ 
 Troubleshooting
 ---------------
   * Check PHP error log usually at `/var/log/php.log`
