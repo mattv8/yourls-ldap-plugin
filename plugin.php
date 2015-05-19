@@ -38,6 +38,9 @@ function ldapauth_environment_check() {
 	if ( !defined( 'LDAPAUTH_ALL_USERS_ADMIN' ) )
 		define( 'LDAPAUTH_ALL_USERS_ADMIN', true );
 
+	if ( !defined( 'LDAPAUTH_ADD_NEW' ) )
+		define( 'LDAPAUTH_ADD_NEW', false );
+		
 	global $ldapauth_authorized_admins;
 	if ( !isset( $ldapauth_authorized_admins ) ) {
 		if ( !LDAPAUTH_ALL_USERS_ADMIN ) {
@@ -59,6 +62,11 @@ function ldapauth_is_valid_user( $value ) {
 		return $value;
 
 	@session_start();
+	
+	// Always check & set early
+	if ( !ldapauth_environment_check() ) {
+		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
+	}
 
 	if ( isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
 		// already authenticated...
@@ -72,13 +80,13 @@ function ldapauth_is_valid_user( $value ) {
 	} else if ( isset( $_REQUEST['username'] ) && isset( $_REQUEST['password'] )
 			&& !empty( $_REQUEST['username'] ) && !empty( $_REQUEST['password']  ) ) {
 
-		if ( !ldapauth_environment_check() ) {
-        	die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
-    	}	
+
+
+
 
 		// try to authenticate
 		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
-		if (!$ldapConnection) Die("Cannot connect to LDAP " . LDAPAUTH_HOST);
+		if (!$ldapConnection) die("Cannot connect to LDAP " . LDAPAUTH_HOST);
 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
 		
 		// Check if using a privileged user account to search
@@ -92,7 +100,7 @@ function ldapauth_is_valid_user( $value ) {
 		$attrs = array('dn', LDAPAUTH_USERNAME_FIELD);
 		if (defined('LDAPAUTH_GROUP_ATTR'))
 			array_push($attrs, LDAPAUTH_GROUP_ATTR);
-			
+		
 		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'], $attrs );
 		if (!$searchDn) return $value;
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
@@ -101,7 +109,7 @@ function ldapauth_is_valid_user( $value ) {
 		if (!$userDn) return $value;	
 		$ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
 		@ldap_close($ldapConnection);
-
+		
 		// success?
 		if ($ldapSuccess)
 		{
@@ -111,7 +119,7 @@ function ldapauth_is_valid_user( $value ) {
 				
 				$in_group = false;
 				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
-					if (strtolower($grps) == strtolower(LDAPAUTH_GROUP_REQ)) { $in_group = true; error_log("YESSS"); break;  }
+					if (strtolower($grps) == strtolower(LDAPAUTH_GROUP_REQ)) { $in_group = true; break;  }
 				}
 				
 				if (!$in_group) die('Not in admin group');
@@ -120,9 +128,16 @@ function ldapauth_is_valid_user( $value ) {
 			$username = $searchResult[0][LDAPAUTH_USERNAME_FIELD][0];
 			yourls_set_user($username);
 			global $yourls_user_passwords;
-			$yourls_user_passwords[$username] = uniqid("",true);
+			
+			if (LDAPAUTH_ADD_NEW && !array_key_exists($username, $yourls_user_passwords)) {
+				ldapauth_create_user( $username, $_REQUEST['password'] );
+			}
+			
+			$yourls_user_passwords[$username] = ldapauth_hash_password($_REQUEST['password']);
 			$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
 			return true;
+		} else {
+			error_log("No LDAP success");
 		}
 	}
 
@@ -151,4 +166,48 @@ yourls_add_action( 'logout', 'ldapauth_logout_hook' );
 function ldapauth_logout_hook( $args ) {
 	unset($_SESSION['LDAPAUTH_AUTH_USER']);
 	setcookie('PHPSESSID', '', 0, '/');
+}
+
+/**
+ * Create user in config file
+ * Code reused from yourls_hash_passwords_now()
+ */
+function ldapauth_create_user( $user, $new_password ) {
+	$configdata = file_get_contents( YOURLS_CONFIGFILE );
+	if ( $configdata == FALSE )	{
+		die('Couldn\'t read the config file');
+	}
+	
+	if (!is_writable(YOURLS_CONFIGFILE))
+		die('Can\'t write to config file');
+		
+	$pass_hash = ldapauth_hash_password($new_password);
+	$user_line = "\t'$user' => 'phpass:$pass_hash' /* Password encrypted by YOURLS */,";
+	
+	// Add the user on a new line after the start of the passwords array
+	$new_contents = preg_replace('/(yourls_user_passwords\s=\sarray\()/',  '$0 ' . PHP_EOL . $user_line, $configdata, -1, $count);
+	
+	if ($count === 0) {
+		die('Couldn\'t add user, plugin may not be compatible with YourLS version');
+	} else if ($count > 1) {
+		die('Added user more than once. Check config file.');
+	}
+		
+	$success = file_put_contents( YOURLS_CONFIGFILE, $new_contents );
+	if ( $success === false ) {
+		die('Unable to save config file');
+	}
+	
+	return $pass_hash;
+}
+
+/**
+ * Hashes password the same way as yourls_hash_passwords_now()
+ **/
+function ldapauth_hash_password ($password) {
+	$pass_hash = yourls_phpass_hash( $password );
+	// PHP would interpret $ as a variable, so replace it in storage.
+	$pass_hash = str_replace( '$', '!', $pass_hash );
+	
+	return $pass_hash;
 }
