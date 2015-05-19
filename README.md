@@ -46,7 +46,7 @@ Troubleshooting
 
 License
 -------
-Copyright 2013 K3A <BR>
+Copyright 2013 K3A, #1davoaust <BR>
 Copyright 2013 Nicholas Waller (code@nicwaller.com) as I used some parts of his CAS authentication plugin :)
 
 This program is free software: you can redistribute it and/or modify
