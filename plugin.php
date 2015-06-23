@@ -80,10 +80,6 @@ function ldapauth_is_valid_user( $value ) {
 	} else if ( isset( $_REQUEST['username'] ) && isset( $_REQUEST['password'] )
 			&& !empty( $_REQUEST['username'] ) && !empty( $_REQUEST['password']  ) ) {
 
-
-
-
-
 		// try to authenticate
 		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
 		if (!$ldapConnection) die("Cannot connect to LDAP " . LDAPAUTH_HOST);
@@ -118,8 +114,10 @@ function ldapauth_is_valid_user( $value ) {
 				if (!array_key_exists(LDAPAUTH_GROUP_ATTR, $searchResult[0])) die('Not in any LDAP groups');
 				
 				$in_group = false;
+				$groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
+				
 				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
-					if (strtolower($grps) == strtolower(LDAPAUTH_GROUP_REQ)) { $in_group = true; break;  }
+					if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
 				}
 				
 				if (!$in_group) die('Not in admin group');
@@ -144,7 +142,7 @@ function ldapauth_is_valid_user( $value ) {
 	return $value;
 }
 
-function ldapauth_is_authorized_user( $username ) {
+function ldapauth_is_authorized_user( $username ) {	
 	// by default, anybody who can authenticate is also
 	// authorized as an administrator.
 	if ( LDAPAUTH_ALL_USERS_ADMIN ) {
