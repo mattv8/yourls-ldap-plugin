@@ -32,7 +32,7 @@ To use a privileged account for the user search:
 
 To check group membership before authenticating:
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ) // (optional) LDAP groups attr
-  * define( 'LDAPAUTH_GROUP_REQ', 'the-group') // (only if LDAPAUTH_GROUP_REQ set) Group user must be in
+  * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group') // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
 
 To automatically add LDAP users to config.php:
   * define( 'LDAPAUTH_ADD_NEW', true ) // (optional) Add LDAP users to config.php
