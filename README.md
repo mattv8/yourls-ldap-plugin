@@ -12,7 +12,7 @@ Installation
 
 Usage
 -----
-When yourls-cas-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made. If LDAP authentication is successful, then you will immediately go to the admin interface.
+When yourls-ldap-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made. If LDAP authentication is successful, then you will immediately go to the admin interface.
 
 You can also set a privileged account to search the LDAP directory with. This is useful for directories that don't allow anonymous binding.
 
@@ -21,21 +21,21 @@ Setting the groups settings will check the user is a member of that group before
 Configuration
 -------------
 
-  * define( 'LDAPAUTH_HOST', 'ldaps://ldap.domain.com' ) // LDAP host name, IP or URL. You can use ldaps://host for LDAP with TLS
-  * define( 'LDAPAUTH_PORT', '636' ) // LDAP server port - often 389 or 636 for TLS (LDAPS)
-  * define( 'LDAPAUTH_BASE', 'dc=domain,dc=com' ) // Base DN (location of users)
-  * define( 'LDAPAUTH_USERNAME_FIELD', 'uid') // (optional) LDAP field name in which username is store
+  * define( 'LDAPAUTH_HOST', 'ldaps://ldap.domain.com' ); // LDAP host name, IP or URL. You can use ldaps://host for LDAP with TLS
+  * define( 'LDAPAUTH_PORT', '636' ); // LDAP server port - often 389 or 636 for TLS (LDAPS)
+  * define( 'LDAPAUTH_BASE', 'dc=domain,dc=com' ); // Base DN (location of users)
+  * define( 'LDAPAUTH_USERNAME_FIELD', 'uid'); // (optional) LDAP field name in which username is store
 
 To use a privileged account for the user search:
-  * define( 'LDAPAUTH_SEARCH_USER', 'cn=your-user,dc=domain,dc=com' ) // (optional) Privileged user to search with
-  * define( 'LDAPAUTH_SEARCH_PASS', 'the-pass') // (optional) (only if LDAPAUTH_SEARCH_USER set) Privileged user pass
+  * define( 'LDAPAUTH_SEARCH_USER', 'cn=your-user,dc=domain,dc=com' ); // (optional) Privileged user to search with
+  * define( 'LDAPAUTH_SEARCH_PASS', 'the-pass'); // (optional) (only if LDAPAUTH_SEARCH_USER set) Privileged user pass
 
 To check group membership before authenticating:
-  * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ) // (optional) LDAP groups attr
-  * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group') // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
+  * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attr
+  * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
 
 To automatically add LDAP users to config.php:
-  * define( 'LDAPAUTH_ADD_NEW', true ) // (optional) Add LDAP users to config.php
+  * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
 NOTE: This will require config.php to be writable by your webserver user
  
 Troubleshooting
