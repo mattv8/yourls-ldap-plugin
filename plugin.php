@@ -57,21 +57,35 @@ yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
 
 // returns true/false
 function ldapauth_is_valid_user( $value ) {
-	// doesn't work for API...
-	if (yourls_is_API())
+	global $yourls_user_passwords;
+	global $ydb;
+	
+	$ldapauth_usercache = $ydb->option['ldapauth_usercache'];
+	
+	// no point in continuing if the user has already been validated by core
+	if ($value) {
+		ldapauth_debug("Returning from ldapauth_is_valid_user as user is already validated");
 		return $value;
+	}
+	
 
 	@session_start();
+
 	
 	// Always check & set early
 	if ( !ldapauth_environment_check() ) {
 		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
 	}
 
+	/* is the cookie needed anymore? Since the user cache is merged with $yourls_user_passwords
+	 * core's yourls_check_auth_cookie should work. If so, a logged in user will arrive in this
+	 * function with $value true, the function returns early and we never get here
+	 */
 	if ( isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
 		// already authenticated...
 		$username = $_SESSION['LDAPAUTH_AUTH_USER'];
-		if ( ldapauth_is_authorized_user( $username ) ) {
+		// why is this checked here, but not before the cookie is set?
+		if ( ldapauth_is_authorized_user( $username ) ) { 
 			yourls_set_user( $_SESSION['LDAPAUTH_AUTH_USER'] );
 			return true;
 		} else {
@@ -84,14 +98,24 @@ function ldapauth_is_valid_user( $value ) {
 		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
 		if (!$ldapConnection) die("Cannot connect to LDAP " . LDAPAUTH_HOST);
 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
+		//ldap_set_option($ldapConnection, LDAP_OPT_REFERRALS, 0);
 		
-		// Check if using a privileged user account to search
-		if (defined('LDAPAUTH_SEARCH_USER') && defined('LDAPAUTH_SEARCH_PASS')) {
+		// should we to try and bind using the credentials being logged in with?
+		if (defined('LDAPAUTH_BIND_WITH_USER_TEMPLATE')) {
+			$bindRDN = sprintf(LDAPAUTH_BIND_WITH_USER_TEMPLATE, $_REQUEST['username']);
+			if (!($ldapSuccess = @ldap_bind($ldapConnection, $bindRDN, $_REQUEST['password']))) {
+				error_log('Couldn\'t bind to LDAP server with user ' . $bindRDN);
+				return $value;
+			}
+		} 
+		
+		// Check if using a privileged user account to search - only if not already bound with current user
+		if (defined('LDAPAUTH_SEARCH_USER') && defined('LDAPAUTH_SEARCH_PASS') && empty($ldapSuccess)) {
 			if (!@ldap_bind($ldapConnection, LDAPAUTH_SEARCH_USER, LDAPAUTH_SEARCH_PASS)) {
 				die('Couldn\'t bind search user ' . LDAPAUTH_SEARCH_USER);
 			}
 		}
-		
+
 		// Limit the attrs to the ones we need
 		$attrs = array('dn', LDAPAUTH_USERNAME_FIELD);
 		if (defined('LDAPAUTH_GROUP_ATTR'))
@@ -102,8 +126,10 @@ function ldapauth_is_valid_user( $value ) {
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
 		if (!$searchResult) return $value;
 		$userDn = $searchResult[0]['dn'];
-		if (!$userDn) return $value;	
-		$ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
+		if (!$userDn && !$ldapSuccess) return $value;	
+		if (empty($ldapSuccess)) { // we don't need to do this if we already bound using username and LDAPAUTH_BIND_WITH_USER_TEMPLATE
+		  $ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
+		}
 		@ldap_close($ldapConnection);
 		
 		// success?
@@ -119,17 +145,24 @@ function ldapauth_is_valid_user( $value ) {
 				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
 					if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
 				}
-				
 				if (!$in_group) die('Not in admin group');
 			}
 			
 			$username = $searchResult[0][LDAPAUTH_USERNAME_FIELD][0];
+			if (empty($username)) { 
+				// try with it lower cased
+				$username = $searchResult[0][strtolower(LDAPAUTH_USERNAME_FIELD)][0];
+			}
 			yourls_set_user($username);
-			global $yourls_user_passwords;
 			
 			if (LDAPAUTH_ADD_NEW && !array_key_exists($username, $yourls_user_passwords)) {
 				ldapauth_create_user( $username, $_REQUEST['password'] );
 			}
+			
+			// store the current user credentials in our cache. This cuts down calls to the LDAP 
+			// server, and allows API keys to work with LDAP users
+			$ldapauth_usercache[$username] = 'phpass:' . ldapauth_hash_password($_REQUEST['password']);
+			yourls_update_option('ldapauth_usercache', $ldapauth_usercache);
 			
 			$yourls_user_passwords[$username] = ldapauth_hash_password($_REQUEST['password']);
 			$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
@@ -164,6 +197,22 @@ yourls_add_action( 'logout', 'ldapauth_logout_hook' );
 function ldapauth_logout_hook( $args ) {
 	unset($_SESSION['LDAPAUTH_AUTH_USER']);
 	setcookie('PHPSESSID', '', 0, '/');
+}
+
+/* This action, called as early as possible, retrieves our cache of LDAP users and 
+ * merges it with $yourls_user_passwords. This enables core to do the authorisation
+ * of previously seen LDAP users, and also means that API signatures for LDAP users 
+ * will work. Users that exist in both users/config.php and LDAP will need to use 
+ * their LDAP passwords
+ */
+yourls_add_action ('plugins_loaded', 'ldapauth_merge_users');
+function ldapauth_merge_users() {
+	global $ydb;
+	global $yourls_user_passwords;
+	if(isset($ydb->option['ldapauth_usercache'])) {
+		ldapauth_debug("Merging text file users and cached LDAP users");
+	$yourls_user_passwords = array_merge($yourls_user_passwords, $ydb->option['ldapauth_usercache']);
+	}
 }
 
 /**
@@ -208,4 +257,10 @@ function ldapauth_hash_password ($password) {
 	$pass_hash = str_replace( '$', '!', $pass_hash );
 	
 	return $pass_hash;
+}
+
+function ldapauth_debug ($msg) {
+	if (defined('LDAPAUTH_DEBUG') && LDAPAUTH_DEBUG) { 
+		error_log("yourls_ldap_auth: " . $msg);
+	}
 }
