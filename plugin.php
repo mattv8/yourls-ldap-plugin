@@ -40,6 +40,10 @@ function ldapauth_environment_check() {
 
 	if ( !defined( 'LDAPAUTH_ADD_NEW' ) )
 		define( 'LDAPAUTH_ADD_NEW', false );
+
+	if ( !defined( 'LDAPAUTH_USERCACHE_TYPE' ) )
+		define( 'LDAPAUTH_USERCACHE_TYPE', 1 );
+
 		
 	global $ldapauth_authorized_admins;
 	if ( !isset( $ldapauth_authorized_admins ) ) {
@@ -59,8 +63,15 @@ yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
 function ldapauth_is_valid_user( $value ) {
 	global $yourls_user_passwords;
 	global $ydb;
-	
-	$ldapauth_usercache = $ydb->option['ldapauth_usercache'];
+
+	// Always check & set early
+	if ( !ldapauth_environment_check() ) {
+		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
+	}
+
+	if( LDAPAUTH_USERCACHE_TYPE == 1) {
+		$ldapauth_usercache = $ydb->option['ldapauth_usercache'];
+	}
 	
 	// no point in continuing if the user has already been validated by core
 	if ($value) {
@@ -68,24 +79,23 @@ function ldapauth_is_valid_user( $value ) {
 		return $value;
 	}
 	
-
-	@session_start();
-
-	
-	// Always check & set early
-	if ( !ldapauth_environment_check() ) {
-		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
+	// session is only needed if we don't use usercache
+	if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+		@session_start();
 	}
 
-	/* is the cookie needed anymore? Since the user cache is merged with $yourls_user_passwords
-	 * core's yourls_check_auth_cookie should work. If so, a logged in user will arrive in this
-	 * function with $value true, the function returns early and we never get here
-	 */
-	if ( isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
+	if ( empty(LDAPAUTH_USERCACHE_TYPE) && isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
 		// already authenticated...
 		$username = $_SESSION['LDAPAUTH_AUTH_USER'];
 		// why is this checked here, but not before the cookie is set?
 		if ( ldapauth_is_authorized_user( $username ) ) { 
+		if( !isset($yourls_user_passwords[$username]) ) {
+			// set a dummy password to work around the "Stealing cookies" problem
+			// we prepend with 'phpass:' to avoid YOURLS trying to auto-encrypt it and
+			// write it to user/config.php
+			ldapauth_debug('Setting dummy entry in $yourls_user_passwords for user ' . $username);
+			$yourls_user_passwords[$username]='phpass:ThereIsNoPasswordButHey,WhoCares?';
+		}
 			yourls_set_user( $_SESSION['LDAPAUTH_AUTH_USER'] );
 			return true;
 		} else {
@@ -156,13 +166,17 @@ function ldapauth_is_valid_user( $value ) {
 				ldapauth_create_user( $username, $_REQUEST['password'] );
 			}
 			
-			// store the current user credentials in our cache. This cuts down calls to the LDAP 
-			// server, and allows API keys to work with LDAP users
-			$ldapauth_usercache[$username] = 'phpass:' . ldapauth_hash_password($_REQUEST['password']);
-			yourls_update_option('ldapauth_usercache', $ldapauth_usercache);
-			
+			if (LDAPAUTH_USERCACHE_TYPE == 1) {
+				// store the current user credentials in our cache. This cuts down calls to the LDAP 
+				// server, and allows API keys to work with LDAP users
+				$ldapauth_usercache[$username] = 'phpass:' . ldapauth_hash_password($_REQUEST['password']);
+				yourls_update_option('ldapauth_usercache', $ldapauth_usercache);
+			}
+
 			$yourls_user_passwords[$username] = ldapauth_hash_password($_REQUEST['password']);
-			$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
+			if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+				$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
+			}
 			return true;
 		} else {
 			error_log("No LDAP success");
@@ -192,8 +206,10 @@ function ldapauth_is_authorized_user( $username ) {
 yourls_add_action( 'logout', 'ldapauth_logout_hook' );
 
 function ldapauth_logout_hook( $args ) {
-	unset($_SESSION['LDAPAUTH_AUTH_USER']);
-	setcookie('PHPSESSID', '', 0, '/');
+	if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+	      unset($_SESSION['LDAPAUTH_AUTH_USER']);
+	      setcookie('PHPSESSID', '', 0, '/');
+	}
 }
 
 /* This action, called as early as possible, retrieves our cache of LDAP users and 
@@ -206,9 +222,12 @@ yourls_add_action ('plugins_loaded', 'ldapauth_merge_users');
 function ldapauth_merge_users() {
 	global $ydb;
 	global $yourls_user_passwords;
-	if(isset($ydb->option['ldapauth_usercache'])) {
+	if ( !ldapauth_environment_check() ) {
+		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
+	}
+	if(LDAPAUTH_USERCACHE_TYPE==1 && isset($ydb->option['ldapauth_usercache'])) {
 		ldapauth_debug("Merging text file users and cached LDAP users");
-	$yourls_user_passwords = array_merge($yourls_user_passwords, $ydb->option['ldapauth_usercache']);
+		$yourls_user_passwords = array_merge($yourls_user_passwords, $ydb->option['ldapauth_usercache']);
 	}
 }
 
