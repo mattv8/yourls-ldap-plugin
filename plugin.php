@@ -148,11 +148,8 @@ function ldapauth_is_valid_user( $value ) {
 				if (!$in_group) die('Not in admin group');
 			}
 			
-			$username = $searchResult[0][LDAPAUTH_USERNAME_FIELD][0];
-			if (empty($username)) { 
-				// try with it lower cased
-				$username = $searchResult[0][strtolower(LDAPAUTH_USERNAME_FIELD)][0];
-			}
+			// attribute index returned by ldap_get_entries is lowercased (http://php.net/manual/en/function.ldap-get-entries.php)
+			$username = $searchResult[0][strtolower(LDAPAUTH_USERNAME_FIELD)][0];
 			yourls_set_user($username);
 			
 			if (LDAPAUTH_ADD_NEW && !array_key_exists($username, $yourls_user_passwords)) {
