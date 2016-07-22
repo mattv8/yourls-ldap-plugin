@@ -54,14 +54,14 @@ Troubleshooting
 
 About the user cache
 --------------------
-When a successful login is made against an LDAP server the plugin will cache the username and encrypted password. Currently this is done by saving them in an array in YOURLS options table. This has some advantages:
+When a successful login is made against an LDAP server the plugin will cache the username and encrypted password. Currently this is done by saving them in an array in the YOURLS options table. This has some advantages:
 
   * It reduces requests to the LDAP server
   * It means that users can still log in even if the LDAP server is unreachable
   * It means that the YOURLS API can be used by LDAP users
 
 Unfortunately, the cache will not scale well. This is because it integrates tightly with YOURLS's internal auth mechanism, and that does not scale. If you have a few tens of LDAP users likely to use your YOURLS installation it should be fine. Much more than that and you may see performance issues. If so, you should probably disable the cache. This will mean
-that your LDAP users will not be able to use the API. At least not unless they are listed in users/config.php, which suffers from the same scaling problems. 
+that your LDAP users will not be able to use the API. At least not unless they are also listed in users/config.php, which suffers from the same scaling problems. 
 
 License
 -------
