@@ -14,9 +14,11 @@ Usage
 -----
 When yourls-ldap-plugin is enabled and user was not successfuly authenticated using data specified in yourls_user_passwords, an LDAP authentication attempt will be made. If LDAP authentication is successful, then you will immediately go to the admin interface.
 
-You can also set a privileged account to search the LDAP directory with. This is useful for directories that don't allow anonymous binding.
+You can also set a privileged account to search the LDAP directory with. This is useful for directories that don't allow anonymous binding. If you define a suitable template, the current user will be used binding. This is useful for Active Directory / Samba. 
 
 Setting the groups settings will check the user is a member of that group before logging them in and storing their credentials. This check is only performed the first time they auth or when their password changes.
+
+yourls-ldap-plugin by default will now implement a simple cache of LDAP users. As well as reducing requests to the LDAP server this has the effect of allowing YOURLS API to work with LDAP users.
 
 Configuration
 -------------
@@ -37,12 +39,32 @@ To check group membership before authenticating:
 To automatically add LDAP users to config.php:
   * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
 NOTE: This will require config.php to be writable by your webserver user
+=======
+
+To define the type of user cache used:
+  * define( 'LDAPAUTH_USERCACHE_TYPE', 0); // (optional) Defaults to 1, which caches users in the options table. 0 turns off cacheing. Other values are currently undefined, but may be one day
+
+To automatically add LDAP users to config.php:
+  * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
+NOTE: This will require config.php to be writable by your webserver user. This function is now largely unneeded because the database based cache offers similar benefits without the need to make config.php writeable. It is retained for backwards compatability
+>>>>>>> 06112447d4d6922c1190be1927dfa047e198c3f5
  
 Troubleshooting
 ---------------
   * Check PHP error log usually at `/var/log/php.log`
   * Check your webserver logs
   * You can try modifying plugin code to print some more debug info
+
+About the user cache
+--------------------
+When a successful login is made against an LDAP server the plugin will cache the username and encrypted password. Currently this is done by saving them in an array in the YOURLS options table. This has some advantages:
+
+  * It reduces requests to the LDAP server
+  * It means that users can still log in even if the LDAP server is unreachable
+  * It means that the YOURLS API can be used by LDAP users
+
+Unfortunately, the cache will not scale well. This is because it integrates tightly with YOURLS's internal auth mechanism, and that does not scale. If you have a few tens of LDAP users likely to use your YOURLS installation it should be fine. Much more than that and you may see performance issues. If so, you should probably disable the cache. This will mean
+that your LDAP users will not be able to use the API. At least not unless they are also listed in users/config.php, which suffers from the same scaling problems. 
 
 License
 -------
