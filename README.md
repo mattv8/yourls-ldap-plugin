@@ -32,14 +32,12 @@ To use a privileged account for the user search:
   * define( 'LDAPAUTH_SEARCH_USER', 'cn=your-user,dc=domain,dc=com' ); // (optional) Privileged user to search with
   * define( 'LDAPAUTH_SEARCH_PASS', 'the-pass'); // (optional) (only if LDAPAUTH_SEARCH_USER set) Privileged user pass
 
+To define a template to bind using the current user for the search: Use %s as the place holder for the current user name
+  * define( 'LDAPAUTH_BIND_WITH_USER_TEMPLATE', '%s@myad.domain' ); // (optional) Use %s as the place holder for the current user name
+
 To check group membership before authenticating:
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attr
   * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
-
-To automatically add LDAP users to config.php:
-  * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
-NOTE: This will require config.php to be writable by your webserver user
-=======
 
 To define the type of user cache used:
   * define( 'LDAPAUTH_USERCACHE_TYPE', 0); // (optional) Defaults to 1, which caches users in the options table. 0 turns off cacheing. Other values are currently undefined, but may be one day
@@ -47,7 +45,6 @@ To define the type of user cache used:
 To automatically add LDAP users to config.php:
   * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
 NOTE: This will require config.php to be writable by your webserver user. This function is now largely unneeded because the database based cache offers similar benefits without the need to make config.php writeable. It is retained for backwards compatability
->>>>>>> 06112447d4d6922c1190be1927dfa047e198c3f5
  
 Troubleshooting
 ---------------
