@@ -39,6 +39,9 @@ To check group membership before authenticating:
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attr
   * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
 
+To define the scope of group req search:
+  * define( 'LDAPAUTH_GROUP_SCOP', 'sub' ); // if not defined the default is 'sub', and will check for the user in all the subtree. The other option is 'base', that will search only members of the exactly req
+
 To define the type of user cache used:
   * define( 'LDAPAUTH_USERCACHE_TYPE', 0); // (optional) Defaults to 1, which caches users in the options table. 0 turns off cacheing. Other values are currently undefined, but may be one day
 
