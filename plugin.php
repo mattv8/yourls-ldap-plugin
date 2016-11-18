@@ -12,6 +12,7 @@ Author URI: http://k3a.me
 // No direct call
 if( !defined( 'YOURLS_ABSPATH' ) ) die();
 
+
 // returns true if the environment is set up right
 function ldapauth_environment_check() {
 	$required_params = array(
@@ -140,22 +141,27 @@ function ldapauth_is_valid_user( $value ) {
 		if (empty($ldapSuccess)) { // we don't need to do this if we already bound using username and LDAPAUTH_BIND_WITH_USER_TEMPLATE
 		  $ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
 		}
-		@ldap_close($ldapConnection);
-		
+	
 		// success?
 		if ($ldapSuccess)
 		{
 			// are we checking group auth?
 			if (defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')) {
-				if (!array_key_exists(LDAPAUTH_GROUP_ATTR, $searchResult[0])) die('Not in any LDAP groups');
-				
-				$in_group = false;
-				$groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
-				
-				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
-					if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
-				}
-				if (!$in_group) die('Not in admin group');
+	
+                           $in_group = false;
+$bind = ldap_bind($ldapConnection, LDAPAUTH_SEARCH_USER, LDAPAUTH_SEARCH_PASS);
+
+	                   $searchGroup = ldap_search($ldapConnection, LDAPAUTH_GROUP_REQ, LDAPAUTH_GROUP_ATTR . "=" . $_REQUEST['username']);
+                           $searchG = ldap_get_entries($ldapConnection,$searchGroup);
+			   
+if ( LDAPAUTH_GROUP_SCOP == 'base'){
+ if ($searchG[0]['dn'] == LDAPAUTH_GROUP_REQ) $in_group = true;
+ }
+else{
+ if ($searchG[0]['dn']) $in_group = true;
+ }
+
+if (!$in_group) die('Not in admin group');
 			}
 			
 			// attribute index returned by ldap_get_entries is lowercased (http://php.net/manual/en/function.ldap-get-entries.php)
@@ -218,6 +224,7 @@ function ldapauth_logout_hook( $args ) {
  * will work. Users that exist in both users/config.php and LDAP will need to use 
  * their LDAP passwords
  */
+
 yourls_add_action ('plugins_loaded', 'ldapauth_merge_users');
 function ldapauth_merge_users() {
 	global $ydb;
@@ -230,7 +237,6 @@ function ldapauth_merge_users() {
 		$yourls_user_passwords = array_merge($yourls_user_passwords, $ydb->option['ldapauth_usercache']);
 	}
 }
-
 /**
  * Create user in config file
  * Code reused from yourls_hash_passwords_now()
@@ -263,7 +269,6 @@ function ldapauth_create_user( $user, $new_password ) {
 	
 	return $pass_hash;
 }
-
 /**
  * Hashes password the same way as yourls_hash_passwords_now()
  **/
@@ -274,7 +279,6 @@ function ldapauth_hash_password ($password) {
 	
 	return $pass_hash;
 }
-
 function ldapauth_debug ($msg) {
 	if (defined('LDAPAUTH_DEBUG') && LDAPAUTH_DEBUG) { 
 		error_log("yourls_ldap_auth: " . $msg);
