@@ -17,7 +17,7 @@ if( !defined( 'YOURLS_ABSPATH' ) ) die();
 function ldapauth_environment_check() {
 	$required_params = array(
 		'LDAPAUTH_HOST', // ldap host
-		//'LDAAUTHP_PORT', // ldap port
+		//'LDAPAUTH_PORT', // ldap port
 		'LDAPAUTH_BASE', // base ldap path
 		//'LDAPAUTH_USERNAME_FIELD', // field to check the username against
 	);
