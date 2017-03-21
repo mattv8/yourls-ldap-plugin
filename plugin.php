@@ -147,22 +147,16 @@ function ldapauth_is_valid_user( $value ) {
 		{
 			// are we checking group auth?
 			if (defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')) {
-	
-                           $in_group = false;
-			   $bind = ldap_bind($ldapConnection, LDAPAUTH_SEARCH_USER, LDAPAUTH_SEARCH_PASS);
-
-			   $groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
-			   foreach($groups_to_check as $group){
-		                   $searchGroup = ldap_search($ldapConnection, $group, LDAPAUTH_GROUP_ATTR . "=" . $_REQUEST['username']);
-	                           $searchG = ldap_get_entries($ldapConnection,$searchGroup);
-				   if ( LDAPAUTH_GROUP_SCOP == 'base'){
-					if ($searchG[0]['dn'] == $group) $in_group = true;
-					}
-				   else{
-					if ($searchG[0]['dn']) $in_group = true;
-				   }
-			   }
-			   if (!$in_group) die('Not in admin group');
+				if (!array_key_exists(LDAPAUTH_GROUP_ATTR, $searchResult[0])) die('Not in any LDAP groups');
+				
+				$in_group = false;
+				$groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
+				
+				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
+			 		if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
+				}
+			
+				if (!$in_group) die('Not in admin group');
 			}
 			
 			// attribute index returned by ldap_get_entries is lowercased (http://php.net/manual/en/function.ldap-get-entries.php)
