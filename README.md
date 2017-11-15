@@ -47,6 +47,11 @@ To define the type of user cache used:
 
 To automatically add LDAP users to config.php:
   * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
+  
+To use Active Directory Sites and Services DNS entry for LDAP server name lookup
+  * define( 'LDAPAUTH_DNS_SITES_AND_SERVICES', '_ldap._tcp.corporate._sites.yourdomain.com' ); // If using Active Directory, with multiple Domain Controllers, the safe way to use DNS to look up your active LDAP server names.  If set, it will be used to override the hostname portion of LDAPAUTH_HOST.
+  * define( 'LDAPAUTH_HOST', 'ldap://'); // LDAP protocol without hostname. You can use 'ldaps://' for LDAP with TLS.
+
 NOTE: This will require config.php to be writable by your webserver user. This function is now largely unneeded because the database based cache offers similar benefits without the need to make config.php writeable. It is retained for backwards compatability
  
 Troubleshooting
