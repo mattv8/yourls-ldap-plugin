@@ -3,7 +3,7 @@
 Plugin Name: Simple LDAP Auth
 Plugin URI: 
 Description: This plugin enables use of LDAP provider for authentication
-Version: 1.0
+Version: 1.1
 Author: k3a
 Author URI: http://k3a.me
 */
@@ -118,7 +118,6 @@ function ldapauth_get_ldap_connection() {
 // returns true/false
 function ldapauth_is_valid_user( $value ) {
 	global $yourls_user_passwords;
-	global $ydb;
 
 	// Always check & set early
 	if ( !ldapauth_environment_check() ) {
@@ -126,7 +125,7 @@ function ldapauth_is_valid_user( $value ) {
 	}
 
 	if( LDAPAUTH_USERCACHE_TYPE == 1) {
-		$ldapauth_usercache = $ydb->option['ldapauth_usercache'];
+		$ldapauth_usercache = yourls_get_option('ldapauth_usercache');
 	}
 	
 	// no point in continuing if the user has already been validated by core
@@ -277,14 +276,13 @@ function ldapauth_logout_hook( $args ) {
 
 yourls_add_action ('plugins_loaded', 'ldapauth_merge_users');
 function ldapauth_merge_users() {
-	global $ydb;
 	global $yourls_user_passwords;
 	if ( !ldapauth_environment_check() ) {
 		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
 	}
-	if(LDAPAUTH_USERCACHE_TYPE==1 && isset($ydb->option['ldapauth_usercache'])) {
+	if(LDAPAUTH_USERCACHE_TYPE==1 && isset(yourls_get_option('ldapauth_usercache'))) {
 		ldapauth_debug("Merging text file users and cached LDAP users");
-		$yourls_user_passwords = array_merge($yourls_user_passwords, $ydb->option['ldapauth_usercache']);
+		$yourls_user_passwords = array_merge($yourls_user_passwords, yourls_get_option('ldapauth_usercache'));
 	}
 }
 /**
