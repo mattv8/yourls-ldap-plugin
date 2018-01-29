@@ -60,6 +60,61 @@ function ldapauth_environment_check() {
 
 yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
 
+function ldapauth_shuffle_assoc($list) {
+    if (!is_array($list)) return $list;
+
+    $keys = array_keys($list);
+    shuffle($keys);
+    $random = array();
+    foreach ($keys as $key) {
+        $random[$key] = $list[$key];
+    }
+    return $random;
+}
+
+// return list of Active Directory Ldap servers that are associated with a site and service
+// example for $site =  = '_ldap._tcp.corporate._sites.company.com'
+function ldapauth_get_ad_servers_for_site() {
+    $results = [];
+    $ad_servers = dns_get_record(LDAPAUTH_DNS_SITES_AND_SERVICES, DNS_SRV, $authns, $addtl);
+    foreach ($ad_servers as $ad_server) {
+        array_push($results, $ad_server['target']);
+    }
+    $results = ldapauth_shuffle_assoc($results);  #randomize the order
+    return $results;
+}
+
+// returns ldap connection
+function ldapauth_get_ldap_connection() {
+    if (defined('LDAPAUTH_DNS_SITES_AND_SERVICES')) {
+        $connection = NULL;
+        $ldap_servers = ldapauth_get_ad_servers_for_site();
+        foreach ($ldap_servers as $ldap_server) {
+            $ldap_address = LDAPAUTH_HOST . $ldap_server;
+            try {
+                $temp_conn = ldap_connect($ldap_address, LDAPAUTH_PORT);  # ldap_connect doesn't actually connect it just checks for plausiable parameters.  Only ldap_bind connects
+                if ($temp_conn) {
+                    $connection = $temp_conn;
+                    break;
+                } else {
+                    error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT .  '.  ' . ldap_error($temp_conn));
+                }
+            } catch (Exception $e) {
+                error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT . '.  ' . __FILE__, __FUNCTION__,$e->getMessage());
+            }
+        }
+
+        if ($connection) {
+            return $connection;
+        } else {
+            die("Cannot connect to LDAP for site and service " . LDAPAUTH_DNS_SITES_AND_SERVICES);
+        }
+
+    } else {
+        return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
+    }
+}
+
 // returns true/false
 function ldapauth_is_valid_user( $value ) {
 	global $yourls_user_passwords;
@@ -106,7 +161,7 @@ function ldapauth_is_valid_user( $value ) {
 			&& !empty( $_REQUEST['username'] ) && !empty( $_REQUEST['password']  ) ) {
 
 		// try to authenticate
-		$ldapConnection = ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
+		$ldapConnection = ldapauth_get_ldap_connection();
 		if (!$ldapConnection) die("Cannot connect to LDAP " . LDAPAUTH_HOST);
 		ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
 		//ldap_set_option($ldapConnection, LDAP_OPT_REFERRALS, 0);
