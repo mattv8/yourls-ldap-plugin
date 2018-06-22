@@ -135,11 +135,11 @@ function ldapauth_is_valid_user( $value ) {
 	}
 	
 	// session is only needed if we don't use usercache
-	if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+	if (!defined(LDAPAUTH_USERCACHE_TYPE)) {
 		@session_start();
 	}
 
-	if ( empty(LDAPAUTH_USERCACHE_TYPE) && isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
+	if (!defined(LDAPAUTH_USERCACHE_TYPE) && isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
 		// already authenticated...
 		$username = $_SESSION['LDAPAUTH_AUTH_USER'];
 		// why is this checked here, but not before the cookie is set?
@@ -229,7 +229,7 @@ function ldapauth_is_valid_user( $value ) {
 			}
 
 			$yourls_user_passwords[$username] = ldapauth_hash_password($_REQUEST['password']);
-			if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+			if (!defined(LDAPAUTH_USERCACHE_TYPE)) {
 				$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
 			}
 			return true;
@@ -261,7 +261,7 @@ function ldapauth_is_authorized_user( $username ) {
 yourls_add_action( 'logout', 'ldapauth_logout_hook' );
 
 function ldapauth_logout_hook( $args ) {
-	if (empty(LDAPAUTH_USERCACHE_TYPE)) {
+	if (!defined(LDAPAUTH_USERCACHE_TYPE)) {
 	      unset($_SESSION['LDAPAUTH_AUTH_USER']);
 	      setcookie('PHPSESSID', '', 0, '/');
 	}
@@ -332,3 +332,6 @@ function ldapauth_debug ($msg) {
 		error_log("yourls_ldap_auth: " . $msg);
 	}
 }
+
+
+
