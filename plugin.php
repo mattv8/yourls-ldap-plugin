@@ -144,17 +144,18 @@ function ldapauth_is_valid_user( $value ) {
 		$username = $_SESSION['LDAPAUTH_AUTH_USER'];
 		// why is this checked here, but not before the cookie is set?
 		if ( ldapauth_is_authorized_user( $username ) ) { 
-		if( !isset($yourls_user_passwords[$username]) ) {
-			// set a dummy password to work around the "Stealing cookies" problem
-			// we prepend with 'phpass:' to avoid YOURLS trying to auto-encrypt it and
-			// write it to user/config.php
-			ldapauth_debug('Setting dummy entry in $yourls_user_passwords for user ' . $username);
-			$yourls_user_passwords[$username]='phpass:ThereIsNoPasswordButHey,WhoCares?';
-		}
+			if( !isset($yourls_user_passwords[$username]) ) {
+				// set a dummy password to work around the "Stealing cookies" problem
+				// we prepend with 'phpass:' to avoid YOURLS trying to auto-encrypt it and
+				// write it to user/config.php
+				ldapauth_debug('Setting dummy entry in $yourls_user_passwords for user ' . $username);
+				$yourls_user_passwords[$username]='phpass:ThereIsNoPasswordButHey,WhoCares?';
+			}
 			yourls_set_user( $_SESSION['LDAPAUTH_AUTH_USER'] );
 			return true;
 		} else {
-			return $username.' is not admin user.';
+			ldapauth_debug($username . ' is not admin user.');
+			return $value;
 		}
 	} else if ( isset( $_REQUEST['username'] ) && isset( $_REQUEST['password'] )
 			&& !empty( $_REQUEST['username'] ) && !empty( $_REQUEST['password']  ) ) {
