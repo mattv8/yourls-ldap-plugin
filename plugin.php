@@ -281,7 +281,7 @@ function ldapauth_merge_users() {
 	if ( !ldapauth_environment_check() ) {
 		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
 	}
-	if(LDAPAUTH_USERCACHE_TYPE==1 && null !== yourls_get_option('ldapauth_usercache')) {
+	if(LDAPAUTH_USERCACHE_TYPE==1 && false !== yourls_get_option('ldapauth_usercache')) {
 		ldapauth_debug("Merging text file users and cached LDAP users");
 		$yourls_user_passwords = array_merge($yourls_user_passwords, yourls_get_option('ldapauth_usercache'));
 	}
