@@ -28,27 +28,36 @@ Configuration
   * define( 'LDAPAUTH_BASE', 'dc=domain,dc=com' ); // Base DN (location of users)
   * define( 'LDAPAUTH_USERNAME_FIELD', 'uid'); // (optional) LDAP field name in which username is store
 
-To use a privileged account for the user search:
+### To use a privileged account for the user search:
   * define( 'LDAPAUTH_SEARCH_USER', 'cn=your-user,dc=domain,dc=com' ); // (optional) Privileged user to search with
   * define( 'LDAPAUTH_SEARCH_PASS', 'the-pass'); // (optional) (only if LDAPAUTH_SEARCH_USER set) Privileged user pass
 
-To define a template to bind using the current user for the search: Use %s as the place holder for the current user name
+### To define a template to bind using the current user for the search: Use %s as the place holder for the current user name
   * define( 'LDAPAUTH_BIND_WITH_USER_TEMPLATE', '%s@myad.domain' ); // (optional) Use %s as the place holder for the current user name
 
-To check group membership before authenticating:
+### To use a custom LDAP search filter:
+  * define( 'LDAPAUTH_SEARCH_FILTER', '(&(samaccountname=%s)(memberof=YOURLS-ADMINS,OU=Groups,DC=example,DC=com))' ); // Use %s as the place holder for the current user name
+
+If this option is not set, filter is based only on LDAPAUTH_USERNAME_FIELD (default).
+This is useful if more advanced filter is needed. Like when using AD nested groups.
+For searching based on AD Nested group `LDAP_MATCHING_RULE_IN_CHAIN` OID (1.2.840.113556.1.4.1941) must be specified for user's memberof attribute.
+Example of filter based on AD nested group:
+`define( 'LDAPAUTH_SEARCH_FILTER', '(&(samaccountname=%s)(memberof:1.2.840.113556.1.4.1941:=YOURLS-ADMINS,OU=Groups,DC=example,DC=com))' );`
+
+### To check group membership before authenticating:
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attr
   * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s user must be in. Allows multiple, semicolon delimited
 
-To define the scope of group req search:
+### To define the scope of group req search:
   * define( 'LDAPAUTH_GROUP_SCOP', 'sub' ); // if not defined the default is 'sub', and will check for the user in all the subtree. The other option is 'base', that will search only members of the exactly req
 
-To define the type of user cache used:
+### To define the type of user cache used:
   * define( 'LDAPAUTH_USERCACHE_TYPE', 0); // (optional) Defaults to 1, which caches users in the options table. 0 turns off cacheing. Other values are currently undefined, but may be one day
 
-To automatically add LDAP users to config.php:
+### To automatically add LDAP users to config.php:
   * define( 'LDAPAUTH_ADD_NEW', true ); // (optional) Add LDAP users to config.php
   
-To use Active Directory Sites and Services DNS entry for LDAP server name lookup
+### To use Active Directory Sites and Services DNS entry for LDAP server name lookup
   * define( 'LDAPAUTH_DNS_SITES_AND_SERVICES', '_ldap._tcp.corporate._sites.yourdomain.com' ); // If using Active Directory, with multiple Domain Controllers, the safe way to use DNS to look up your active LDAP server names.  If set, it will be used to override the hostname portion of LDAPAUTH_HOST.
   * define( 'LDAPAUTH_HOST', 'ldap://'); // LDAP protocol without hostname. You can use 'ldaps://' for LDAP with TLS.
 
