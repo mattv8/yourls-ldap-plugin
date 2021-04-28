@@ -44,7 +44,6 @@ function ldapauth_environment_check() {
 
 	if ( !defined( 'LDAPAUTH_USERCACHE_TYPE' ) )
 		define( 'LDAPAUTH_USERCACHE_TYPE', 1 );
-
 		
 	global $ldapauth_authorized_admins;
 	if ( !isset( $ldapauth_authorized_admins ) ) {
@@ -61,58 +60,58 @@ function ldapauth_environment_check() {
 yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
 
 function ldapauth_shuffle_assoc($list) {
-    if (!is_array($list)) return $list;
+	if (!is_array($list)) return $list;
 
-    $keys = array_keys($list);
-    shuffle($keys);
-    $random = array();
-    foreach ($keys as $key) {
-        $random[$key] = $list[$key];
-    }
-    return $random;
+	$keys = array_keys($list);
+	shuffle($keys);
+	$random = array();
+	foreach ($keys as $key) {
+		$random[$key] = $list[$key];
+	}
+	return $random;
 }
 
 // return list of Active Directory Ldap servers that are associated with a site and service
 // example for $site =  = '_ldap._tcp.corporate._sites.company.com'
 function ldapauth_get_ad_servers_for_site() {
-    $results = [];
-    $ad_servers = dns_get_record(LDAPAUTH_DNS_SITES_AND_SERVICES, DNS_SRV, $authns, $addtl);
-    foreach ($ad_servers as $ad_server) {
-        array_push($results, $ad_server['target']);
-    }
-    $results = ldapauth_shuffle_assoc($results);  #randomize the order
-    return $results;
+	$results = [];
+	$ad_servers = dns_get_record(LDAPAUTH_DNS_SITES_AND_SERVICES, DNS_SRV, $authns, $addtl);
+	foreach ($ad_servers as $ad_server) {
+		array_push($results, $ad_server['target']);
+	}
+	$results = ldapauth_shuffle_assoc($results);  #randomize the order
+	return $results;
 }
 
 // returns ldap connection
 function ldapauth_get_ldap_connection() {
-    if (defined('LDAPAUTH_DNS_SITES_AND_SERVICES')) {
-        $connection = NULL;
-        $ldap_servers = ldapauth_get_ad_servers_for_site();
-        foreach ($ldap_servers as $ldap_server) {
-            $ldap_address = LDAPAUTH_HOST . $ldap_server;
-            try {
-                $temp_conn = ldap_connect($ldap_address, LDAPAUTH_PORT);  # ldap_connect doesn't actually connect it just checks for plausiable parameters.  Only ldap_bind connects
-                if ($temp_conn) {
-                    $connection = $temp_conn;
-                    break;
-                } else {
-                    error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT .  '.  ' . ldap_error($temp_conn));
-                }
-            } catch (Exception $e) {
-                error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT . '.  ' . __FILE__, __FUNCTION__,$e->getMessage());
-            }
-        }
+	if (defined('LDAPAUTH_DNS_SITES_AND_SERVICES')) {
+		$connection = NULL;
+		$ldap_servers = ldapauth_get_ad_servers_for_site();
+		foreach ($ldap_servers as $ldap_server) {
+			$ldap_address = LDAPAUTH_HOST . $ldap_server;
+			try {
+				$temp_conn = ldap_connect($ldap_address, LDAPAUTH_PORT);  # ldap_connect doesn't actually connect it just checks for plausiable parameters.  Only ldap_bind connects
+				if ($temp_conn) {
+					$connection = $temp_conn;
+					break;
+				} else {
+					error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT .  '.  ' . ldap_error($temp_conn));
+				}
+			} catch (Exception $e) {
+				error_log('Warning, unable to connect to: ' . $ldap_address . ' on port ' . LDAPAUTH_PORT . '.	' . __FILE__, __FUNCTION__,$e->getMessage());
+			}
+		}
 
-        if ($connection) {
-            return $connection;
-        } else {
-            die("Cannot connect to LDAP for site and service " . LDAPAUTH_DNS_SITES_AND_SERVICES);
-        }
+		if ($connection) {
+			return $connection;
+		} else {
+			die("Cannot connect to LDAP for site and service " . LDAPAUTH_DNS_SITES_AND_SERVICES);
+		}
 
-    } else {
-        return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
-    }
+	} else {
+		return ldap_connect(LDAPAUTH_HOST, LDAPAUTH_PORT);
+	}
 }
 
 // returns true/false
@@ -182,19 +181,26 @@ function ldapauth_is_valid_user( $value ) {
 			}
 		}
 
+		// Check if using LDAP Filter, otherwise, filter by LDAPAUTH_USERNAME_FIELD only.
+		if ( !defined('LDAPAUTH_SEARCH_FILTER') ){
+			$ldapFilter = LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'];
+		} else {
+			$ldapFilter = sprintf(LDAPAUTH_SEARCH_FILTER, $_REQUEST['username']);
+		}
+
 		// Limit the attrs to the ones we need
 		$attrs = array('dn', LDAPAUTH_USERNAME_FIELD);
 		if (defined('LDAPAUTH_GROUP_ATTR'))
 			array_push($attrs, LDAPAUTH_GROUP_ATTR);
 		
-		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, LDAPAUTH_USERNAME_FIELD . "=" . $_REQUEST['username'], $attrs );
+		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, $ldapFilter, $attrs );
 		if (!$searchDn) return $value;
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
 		if (!$searchResult) return $value;
 		$userDn = $searchResult[0]['dn'];
 		if (!$userDn && !$ldapSuccess) return $value;	
 		if (empty($ldapSuccess)) { // we don't need to do this if we already bound using username and LDAPAUTH_BIND_WITH_USER_TEMPLATE
-		  $ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
+			$ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
 		}
 	
 		// success?
@@ -208,7 +214,7 @@ function ldapauth_is_valid_user( $value ) {
 				$groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
 				
 				foreach($searchResult[0][LDAPAUTH_GROUP_ATTR] as $grps) {
-			 		if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
+					if (in_array(strtolower($grps), $groups_to_check)) { $in_group = true; break;  }
 				}
 			
 				if (!$in_group) die('Not in admin group');
@@ -263,8 +269,8 @@ yourls_add_action( 'logout', 'ldapauth_logout_hook' );
 
 function ldapauth_logout_hook( $args ) {
 	if (!defined(LDAPAUTH_USERCACHE_TYPE)) {
-	      unset($_SESSION['LDAPAUTH_AUTH_USER']);
-	      setcookie('PHPSESSID', '', 0, '/');
+		unset($_SESSION['LDAPAUTH_AUTH_USER']);
+		setcookie('PHPSESSID', '', 0, '/');
 	}
 }
 
