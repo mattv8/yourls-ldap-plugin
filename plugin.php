@@ -56,8 +56,10 @@ function ldapauth_environment_check() {
 	return true;
 }
 
-
-yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
+# Reroute login to yourls filter 
+# (see https://github.com/YOURLS/YOURLS/wiki/Advanced-Hook-Syntax)
+//yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
+yourls_add_filter( 'shunt_is_valid_user', 'ldapauth_is_valid_user' );
 
 function ldapauth_shuffle_assoc($list) {
 	if (!is_array($list)) return $list;
@@ -117,7 +119,7 @@ function ldapauth_get_ldap_connection() {
 // returns true/false
 function ldapauth_is_valid_user( $value ) {
 	global $yourls_user_passwords;
-
+	
 	// Always check & set early
 	if ( !ldapauth_environment_check() ) {
 		die( 'Invalid configuration for YOURLS LDAP plugin. Check PHP error log.' );
@@ -141,6 +143,7 @@ function ldapauth_is_valid_user( $value ) {
 	if (!defined(LDAPAUTH_USERCACHE_TYPE) && isset( $_SESSION['LDAPAUTH_AUTH_USER'] ) ) {
 		// already authenticated...
 		$username = $_SESSION['LDAPAUTH_AUTH_USER'];
+
 		// why is this checked here, but not before the cookie is set?
 		if ( ldapauth_is_authorized_user( $username ) ) { 
 			if( !isset($yourls_user_passwords[$username]) ) {
@@ -202,7 +205,7 @@ function ldapauth_is_valid_user( $value ) {
 		if (empty($ldapSuccess)) { // we don't need to do this if we already bound using username and LDAPAUTH_BIND_WITH_USER_TEMPLATE
 			$ldapSuccess = @ldap_bind($ldapConnection, $userDn, $_REQUEST['password']);
 		}
-	
+
 		// success?
 		if ($ldapSuccess)
 		{
@@ -240,6 +243,7 @@ function ldapauth_is_valid_user( $value ) {
 				$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
 			}
 			return true;
+			ldapauth_debug("User $username was successfully authenticated");
 		} else {
 			error_log("No LDAP success");
 		}
@@ -259,8 +263,8 @@ function ldapauth_is_authorized_user( $username ) {
 	global $ldapauth_authorized_admins;
 	if ( in_array( $username, $ldapauth_authorized_admins ) ) {
 		return true;
-	}
-
+	} 
+	
 	// not an admin user
 	return false;
 }
@@ -281,7 +285,7 @@ function ldapauth_logout_hook( $args ) {
  * their LDAP passwords
  */
 
-yourls_add_action ('plugins_loaded', 'ldapauth_merge_users');
+yourls_add_action('plugins_loaded', 'ldapauth_merge_users');
 function ldapauth_merge_users() {
 	global $yourls_user_passwords;
 	if ( !ldapauth_environment_check() ) {
@@ -289,7 +293,10 @@ function ldapauth_merge_users() {
 	}
 	if(LDAPAUTH_USERCACHE_TYPE==1 && false !== yourls_get_option('ldapauth_usercache')) {
 		ldapauth_debug("Merging text file users and cached LDAP users");
+		//print_r($yourls_user_passwords) . "<br>";
 		$yourls_user_passwords = array_merge($yourls_user_passwords, yourls_get_option('ldapauth_usercache'));
+		//print_r($yourls_user_passwords) . "<br>";
+		//die('Paused');
 	}
 }
 /**
@@ -297,7 +304,7 @@ function ldapauth_merge_users() {
  * Code reused from yourls_hash_passwords_now()
  */
 function ldapauth_create_user( $user, $new_password ) {
-	$configdata = file_get_contents( YOURLS_CONFIGFILE );
+	$configdata = htmlspecialchars(file_get_contents( YOURLS_CONFIGFILE ));
 	if ( $configdata == FALSE )	{
 		die('Couldn\'t read the config file');
 	}
@@ -306,10 +313,17 @@ function ldapauth_create_user( $user, $new_password ) {
 		die('Can\'t write to config file');
 		
 	$pass_hash = ldapauth_hash_password($new_password);
-	$user_line = "\t'$user' => 'phpass:$pass_hash' /* Password encrypted by YOURLS */,";
+	$user_line = "\t'$user' => 'phpass:$pass_hash' /* LDAP user added by plugin */,";
 	
 	// Add the user on a new line after the start of the passwords array
-	$new_contents = preg_replace('/(yourls_user_passwords\s=\sarray\()/',  '$0 ' . PHP_EOL . $user_line, $configdata, -1, $count);
+	$new_contents = preg_replace('/\$yourls_user_passwords\s=\s\[/',  '$0 ' . PHP_EOL . $user_line, $configdata, -1, $count);
+	//echo YOURLS_CONFIGFILE . "<br>";
+	//echo $configdata . "<br>";
+	//echo $user_line . "<br>";
+	//echo $user . "<br>";
+	//echo htmlspecialchars_decode($new_contents) . "<br>";
+	//echo $count . "<br>";
+	//die('Paused');
 	
 	if ($count === 0) {
 		die('Couldn\'t add user, plugin may not be compatible with YourLS version');
@@ -317,7 +331,7 @@ function ldapauth_create_user( $user, $new_password ) {
 		die('Added user more than once. Check config file.');
 	}
 		
-	$success = file_put_contents( YOURLS_CONFIGFILE, $new_contents );
+	$success = file_put_contents( YOURLS_CONFIGFILE, htmlspecialchars_decode($new_contents) );
 	if ( $success === false ) {
 		die('Unable to save config file');
 	}
