@@ -1,6 +1,11 @@
 yourls-ldap-plugin
 ==================
 
+```diff
+- A MAINTAINER NEEDED
+Since I no longer use YOURLS, I am seeking an individual with a reasonable level of PHP knowledge
+to take over the project and carry on its development (see https://github.com/k3a/yourls-ldap-plugin/issues/32).
+```
 This plugin for [YOURLS](https://github.com/YOURLS/YOURLS) enables the simple use of [LDAP](http://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol) for user authentication. 
 
 Installation
