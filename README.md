@@ -1,11 +1,6 @@
 yourls-ldap-plugin
 ==================
 
-```diff
-- A MAINTAINER NEEDED
-Since I no longer use YOURLS, I am seeking an individual with a reasonable level of PHP knowledge
-to take over the project and carry on its development (see https://github.com/k3a/yourls-ldap-plugin/issues/32).
-```
 This plugin for [YOURLS](https://github.com/YOURLS/YOURLS) enables the simple use of [LDAP](http://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol) for user authentication. 
 
 Installation
@@ -87,8 +82,12 @@ that your LDAP users will not be able to use the API. At least not unless they a
 
 License
 -------
-Copyright 2013 K3A, #1davoaust <BR>
+Original Plugin Author(s):
+Copyright 2013 K3A, #1davoaust
 Copyright 2013 Nicholas Waller (code@nicwaller.com) as I used some parts of his CAS authentication plugin :)
+
+Maintainer(s):
+Matt Visnovsky #mattv8
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
