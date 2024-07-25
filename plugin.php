@@ -24,7 +24,7 @@ function ldapauth_environment_check()
 
 	foreach ($required_params as $pname) {
 		if (!defined($pname)) {
-			$message = 'Missing defined parameter ' . $pname . ' in plugin ' . $thisplugname;
+			$message = 'Missing defined parameter ' . $pname . ' in plugin LDAP';
 			error_log($message);
 			return false;
 		}
@@ -42,8 +42,20 @@ function ldapauth_environment_check()
 	if (!defined('LDAPAUTH_ADD_NEW'))
 		define('LDAPAUTH_ADD_NEW', false);
 
+	if (!defined('LDAPAUTH_GROUP_MODE'))
+		define('LDAPAUTH_GROUP_MODE', 'attribute');
+
+	if (!defined('LDAPAUTH_GROUP_MEMBER_TYPE'))
+		define('LDAPAUTH_GROUP_MEMBER_TYPE', 'dn');
+
 	if (!defined('LDAPAUTH_USERCACHE_TYPE'))
 		define('LDAPAUTH_USERCACHE_TYPE', 1);
+
+	if (LDAPAUTH_GROUP_MODE == "group" && !(!defined(LDAPAUTH_SEARCH_USER) || !defined(LDAPAUTH_SEARCH_PASS))) {
+		$message = 'Group-based authentication requires LDAPAUTH_SEARCH_USER and LDAPAUTH_SEARCH_PASS in plugin LDAP ';
+		error_log($message);
+		return false;
+	}
 
 	global $ldapauth_authorized_admins;
 	if (!isset($ldapauth_authorized_admins)) {
@@ -210,8 +222,8 @@ function ldapauth_is_valid_user($value)
 
 		// success?
 		if ($ldapSuccess) {
-			// are we checking group auth?
-			if (defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')) {
+			// are we checking group auth based on user attribute?
+			if (LDAPAUTH_GROUP_MODE == 'attribute' && defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')) {
 				if (!array_key_exists(LDAPAUTH_GROUP_ATTR, $searchResult[0])) die('Not in any LDAP groups');
 
 				$in_group = false;
@@ -225,6 +237,34 @@ function ldapauth_is_valid_user($value)
 				}
 
 				if (!$in_group) die('Not in admin group');
+			}
+			
+			// are we checking group auth based on user membership?
+			if (LDAPAUTH_GROUP_MODE == 'group' && defined('LDAPAUTH_GROUP_ATTR') && defined('LDAPAUTH_GROUP_REQ')
+				&& defined('LDAPAUTH_GROUP_BASE') && defined('LDAPAUTH_GROUP_MEMBER'))  {
+
+				// first re-bind as the search user to perform group lookup. Sanity check are performed before hand
+
+				if (!@ldap_bind($ldapConnection, LDAPAUTH_SEARCH_USER, LDAPAUTH_SEARCH_PASS)) {
+					die('Couldn\'t bind search user ' . LDAPAUTH_SEARCH_USER);
+				}
+				
+				// Build the list of group the member should be part of
+				$groups_to_check = explode(";", strtolower(LDAPAUTH_GROUP_REQ)); // This is now an array
+				$grp_filt = "";
+				foreach ($groups_to_check as $grp)
+					$grp_filt.=sprintf("(%s=%s)",LDAPAUTH_GROUP_ATTR,$grp);
+
+				// build the filter : (&(<attribute>=<userdn/username>)(|(groupattr=groupname)[1-n]))
+				$group_filter=sprintf("(&(%s=%s)(|%s))",
+					LDAPAUTH_GROUP_MEMBER,(LDAPAUTH_GROUP_MEMBER_TYPE=='dn') ? $userDn : $_REQUEST['username'],$grp_filt);
+
+				$group_result = ldap_search($ldapConnection, LDAPAUTH_GROUP_BASE, $group_filter, array(LDAPAUTH_GROUP_ATTR));
+				if (!$group_result) die('Error in group authentication.');	
+				$group_info = ldap_get_entries($ldapConnection, $group_result);
+				// if we have no results, the user is not member of any of the specified groups
+				if($group_info['count'] == 0) return $value;
+				
 			}
 
 			// attribute index returned by ldap_get_entries is lowercased (http://php.net/manual/en/function.ldap-get-entries.php)
@@ -333,7 +373,7 @@ function ldapauth_create_user($user, $new_password)
 		die('Unable to save config file');
 	}
 
-	return $pass_hash;
+	return $pass_hash; 
 }
 /**
  * Hashes password the same way as yourls_hash_passwords_now()

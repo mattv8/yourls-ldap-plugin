@@ -45,8 +45,27 @@ Example of a filter based on AD nested group:
 `define( 'LDAPAUTH_SEARCH_FILTER', '(&(samaccountname=%s)(memberof:1.2.840.113556.1.4.1941:=YOURLS-ADMINS,OU=Groups,DC=example,DC=com))' );`
 
 ### To check group membership before authenticating:
+
+There's two different approach to authorize the user to connect :
+  * Attribute based. Access is granted based on an attribute on the user entry (memberOf, OU, ect)
+  * Group based. LDAP Lookup is performed to check if the user is member of the defined list of groups
+
+**Attribute based** (default behaviour)
+
+  * define( 'LDAPAUTH_GROUP_MODE', 'attribute'); // default mode
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attribute
   * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s the user must be in. Allows multiple, semicolon-delimited
+
+**Group based**
+
+  * define( 'LDAPAUTH_GROUP_MODE', 'group'); // Authorization mode. lookup groups and check for user membership
+  * define( 'LDAPAUTH_GROUP_BASE', 'ou=groups,dc=example,dc=org' ); // Base DN for group lookups
+  * define( 'LDAPAUTH_GROUP_ATTR', 'cn' ); // group name attribute
+  * define( 'LDAPAUTH_GROUP_MEMBER', 'member' ); // membership attribute
+  * define( 'LDAPAUTH_GROUP_MEMBER_TYPE', 'dn' ); // group member reference. either 'dn' (default) or 'uid'
+  * define( 'LDAPAUTH_GROUP_REQ', 'yourlsadmin'); // Group/s user must be in. Allows multiple, semicolon delimited
+
+Note : Group based authorization **requires** LDAPAUTH_SEARCH_USER and LDAPAUTH_SEARCH_PASS. This requirement is checked when the plugin is loaded.
 
 ### To define the scope of group req search:
   * define( 'LDAPAUTH_GROUP_SCOP', 'sub' ); // if not defined the default is 'sub', and will check for the user in all the subtree. The other option is 'base', which will search only members of the exact req
