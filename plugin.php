@@ -68,8 +68,10 @@ function ldapauth_environment_check()
 	return true;
 }
 
-
-yourls_add_filter('is_valid_user', 'ldapauth_is_valid_user');
+# Reroute login to yourls filter
+# (see https://github.com/YOURLS/YOURLS/wiki/Advanced-Hook-Syntax)
+//yourls_add_filter( 'is_valid_user', 'ldapauth_is_valid_user' );
+yourls_add_filter('shunt_is_valid_user', 'ldapauth_is_valid_user');
 
 function ldapauth_shuffle_assoc($list)
 {
@@ -290,6 +292,7 @@ function ldapauth_is_valid_user($value)
 				$_SESSION['LDAPAUTH_AUTH_USER'] = $username;
 			}
 			return true;
+			ldapauth_debug("User $username was successfully authenticated");
 		} else {
 			error_log("No LDAP success");
 		}
@@ -351,7 +354,7 @@ function ldapauth_merge_users()
  */
 function ldapauth_create_user($user, $new_password)
 {
-	$configdata = file_get_contents(YOURLS_CONFIGFILE);
+	$configdata = htmlspecialchars(file_get_contents(YOURLS_CONFIGFILE));
 	if ($configdata == FALSE) {
 		die('Couldn\'t read the config file');
 	}
@@ -360,10 +363,10 @@ function ldapauth_create_user($user, $new_password)
 		die('Can\'t write to config file');
 
 	$pass_hash = ldapauth_hash_password($new_password);
-	$user_line = "\t'$user' => 'phpass:$pass_hash' /* Password encrypted by YOURLS */,";
+	$user_line = "\t'$user' => 'phpass:$pass_hash' /* LDAP user added by plugin */,";
 
 	// Add the user on a new line after the start of the passwords array
-	$new_contents = preg_replace('/(yourls_user_passwords\s=\sarray\()/',  '$0 ' . PHP_EOL . $user_line, $configdata, -1, $count);
+	$new_contents = preg_replace('/\$yourls_user_passwords\s=\s\[/',  '$0 ' . PHP_EOL . $user_line, $configdata, -1, $count);
 
 	if ($count === 0) {
 		die('Couldn\'t add user, plugin may not be compatible with YourLS version');
@@ -371,7 +374,7 @@ function ldapauth_create_user($user, $new_password)
 		die('Added user more than once. Check config file.');
 	}
 
-	$success = file_put_contents(YOURLS_CONFIGFILE, $new_contents);
+	$success = file_put_contents(YOURLS_CONFIGFILE, htmlspecialchars_decode($new_contents));
 	if ($success === false) {
 		die('Unable to save config file');
 	}
