@@ -210,6 +210,9 @@ function ldapauth_is_valid_user($value)
 		if (defined('LDAPAUTH_GROUP_ATTR'))
 			array_push($attrs, LDAPAUTH_GROUP_ATTR);
 
+		if (defined('LDAPAUTH_LDAP_OPT_REFERRALS')) {
+			ldap_set_option($ldapConnection, LDAP_OPT_REFERRALS, LDAPAUTH_LDAP_OPT_REFERRALS);
+		}
 		$searchDn = ldap_search($ldapConnection, LDAPAUTH_BASE, $ldapFilter, $attrs);
 		if (!$searchDn) return $value;
 		$searchResult = ldap_get_entries($ldapConnection, $searchDn);
