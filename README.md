@@ -45,8 +45,27 @@ Example of a filter based on AD nested group:
 `define( 'LDAPAUTH_SEARCH_FILTER', '(&(samaccountname=%s)(memberof:1.2.840.113556.1.4.1941:=YOURLS-ADMINS,OU=Groups,DC=example,DC=com))' );`
 
 ### To check group membership before authenticating:
+
+There's two different approach to authorize the user to connect :
+  * Attribute based. Access is granted based on an attribute on the user entry (memberOf, OU, ect)
+  * Group based. LDAP Lookup is performed to check if the user is member of the defined list of groups
+
+**Attribute based** (default behaviour)
+
+  * define( 'LDAPAUTH_GROUP_MODE', 'attribute'); // default mode
   * define( 'LDAPAUTH_GROUP_ATTR', 'memberof' ); // (optional) LDAP groups attribute
   * define( 'LDAPAUTH_GROUP_REQ', 'the-group;another-admin-group'); // (only if LDAPAUTH_GROUP_REQ set) Group/s the user must be in. Allows multiple, semicolon-delimited
+
+**Group based**
+
+  * define( 'LDAPAUTH_GROUP_MODE', 'group'); // Authorization mode. lookup groups and check for user membership
+  * define( 'LDAPAUTH_GROUP_BASE', 'ou=groups,dc=example,dc=org' ); // Base DN for group lookups
+  * define( 'LDAPAUTH_GROUP_ATTR', 'cn' ); // group name attribute
+  * define( 'LDAPAUTH_GROUP_MEMBER', 'member' ); // membership attribute
+  * define( 'LDAPAUTH_GROUP_MEMBER_TYPE', 'dn' ); // group member reference. either 'dn' (default) or 'uid'
+  * define( 'LDAPAUTH_GROUP_REQ', 'yourlsadmin'); // Group/s user must be in. Allows multiple, semicolon delimited
+
+Note : Group based authorization **requires** LDAPAUTH_SEARCH_USER and LDAPAUTH_SEARCH_PASS. This requirement is checked when the plugin is loaded.
 
 ### To define the scope of group req search:
   * define( 'LDAPAUTH_GROUP_SCOP', 'sub' ); // if not defined the default is 'sub', and will check for the user in all the subtree. The other option is 'base', which will search only members of the exact req
@@ -60,6 +79,9 @@ Example of a filter based on AD nested group:
 ### To use Active Directory Sites and Services DNS entry for LDAP server name lookup
   * define( 'LDAPAUTH_DNS_SITES_AND_SERVICES', '_ldap._tcp.corporate._sites.yourdomain.com' ); // If using Active Directory with multiple Domain Controllers, the safe way to use DNS to look up your active LDAP server names.  If set, it will be used to override the hostname portion of LDAPAUTH_HOST.
   * define( 'LDAPAUTH_HOST', 'ldap://'); // LDAP protocol without the hostname. You can use 'ldaps://' for LDAP with TLS.
+
+### To prevent following LDAP referrals
+  * define( 'LDAPAUTH_LDAP_OPT_REFERRALS', 0 ); // (optional) Defaults to 1.  When using Active Directory, following LDAP referrals can fail.  It will fail in a way that causes the ldap_search function to hang for at least a minute.  Related [issue](https://github.com/MISP/MISP/issues/2749).
 
 NOTE: This will require config.php to be writable by your webserver user. This function is now largely unneeded because the database-based cache offers similar benefits without the need to make config.php writable. It is retained for backward compatibility.
 
