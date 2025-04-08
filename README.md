@@ -61,6 +61,9 @@ Example of a filter based on AD nested group:
   * define( 'LDAPAUTH_DNS_SITES_AND_SERVICES', '_ldap._tcp.corporate._sites.yourdomain.com' ); // If using Active Directory with multiple Domain Controllers, the safe way to use DNS to look up your active LDAP server names.  If set, it will be used to override the hostname portion of LDAPAUTH_HOST.
   * define( 'LDAPAUTH_HOST', 'ldap://'); // LDAP protocol without the hostname. You can use 'ldaps://' for LDAP with TLS.
 
+### To prevent following LDAP referrals
+  * define( 'LDAPAUTH_LDAP_OPT_REFERRALS', 0 ); // (optional) Defaults to 1.  When using Active Directory, following LDAP referrals can fail.  It will fail in a way that causes the ldap_search function to hang for at least a minute.  Related [issue](https://github.com/MISP/MISP/issues/2749).
+
 NOTE: This will require config.php to be writable by your webserver user. This function is now largely unneeded because the database-based cache offers similar benefits without the need to make config.php writable. It is retained for backward compatibility.
 
 Troubleshooting
